@@ -1,0 +1,5 @@
+1. Clone project
+2. Create local interpreter (venv) (recommend python 3.11)
+3. Install all libraries on venv, you must on /telegram_bot root
+    pip install -r requirements.txt
+4. Run this in command line "uvicorn main:app --host 0.0.0.0 --port 8000"
