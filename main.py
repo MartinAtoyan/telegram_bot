@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 load_dotenv()
 
-DATA_FILE = os.environ.get("DATA_FILE", "users.jsonl")
+DATA_FILE = os.environ.get("DATA_FILE")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 
@@ -46,11 +46,11 @@ def delete_user(telegram_id):
 
 
 QUESTIONS = [
-    "What's your first name? 😊",
+    "What's your first name?",
     "Great! And your last name?",
     "How old are you?",
-    "What's your email address? 📧",
-    "What's your KakaoTalk ID? 💬",
+    "What's your email address?",
+    "What's your KakaoTalk ID?",
     "What year are you in?",
     "Which major are you studying?",
     "Who would you prefer as a study partner?",
@@ -102,23 +102,23 @@ PARTNER_YEAR_PREF = [
 ]
 
 STUDY_LOCATION_PREF = [
-    ["I prefer studying online 💻"],
-    ["I prefer meeting in real life 🏫"]
+    ["I prefer studying online"],
+    ["I prefer meeting in real life"]
 ]
 
 STUDY_SOUND_PREF = [
-    ["I prefer a silent environment 🤫"],
-    ["I prefer studying with music 🎵"]
+    ["I prefer a silent environment"],
+    ["I prefer studying with music"]
 ]
 
 STUDY_QUESTION_PREF = [
-    ["I like asking questions about the material 🙋"],
-    ["I prefer studying independently 📚"]
+    ["I like asking questions about the material"],
+    ["I prefer studying independently"]
 ]
 
 QUESTION_METHOD_PREF = [
-    ["I prefer asking questions in the chat 💬"],
-    ["I prefer asking questions face to face 👥"]
+    ["I prefer asking questions in the chat"],
+    ["I prefer asking questions face to face"]
 ]
 
 user_sessions = {}
@@ -131,7 +131,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if uid in users:
         menu_keyboard = ReplyKeyboardMarkup([["/match"], ["/delete"]], resize_keyboard=True)
         await update.message.reply_text(
-            f"Hey {users[uid]['first_name']}! Welcome back! 👋\n\n"
+            f"Hey {users[uid]['first_name']}! Welcome back!\n\n"
             f"Ready to find your study buddy? Just use /match!\n"
             f"Want to start over? Use /delete to remove your info.",
             reply_markup=menu_keyboard
@@ -140,7 +140,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_sessions[uid] = {"answers": [], "step": 0}
     await update.message.reply_text(
-        "Hi there! 👋 Let's find you the perfect study partner!\n\n"
+        "Hi there! Let's find you the perfect study partner!\n\n"
         "I'll ask you a few quick questions to get started.\n\n" + QUESTIONS[0],
         reply_markup=ReplyKeyboardRemove()
     )
@@ -156,7 +156,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if uid not in user_sessions:
         await update.message.reply_text(
-            "Hmm, it looks like we haven't started yet! 🤔\n"
+            "Hmm, it looks like we haven't started yet!\n"
             "Send /start to begin finding your study partner!"
         )
         return
@@ -212,9 +212,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_user(user_record)
         menu_keyboard = ReplyKeyboardMarkup([["/match"], ["/delete"]], resize_keyboard=True)
         await update.message.reply_text(
-            f"Awesome, {d[0]}! You're all set! 🎉\n\n"
+            f"Awesome, {d[0]}! You're all set!\n\n"
             f"Whenever you're ready to find your study partner, just send /match.\n\n"
-            f"Happy studying! 📚✨",
+            f"Happy studying!",
             reply_markup=menu_keyboard
         )
         del user_sessions[uid]
@@ -260,10 +260,10 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not matches:
         await update.message.reply_text(
-            "No matches found yet! 😔\n\n"
+            "No matches found yet!\n\n"
             "Don't worry though - as more students register, "
             "you'll have better chances of finding your perfect study buddy!\n\n"
-            "Check back soon! 🌟",
+            "Check back soon!",
             reply_markup=menu_keyboard
         )
         return
@@ -271,13 +271,13 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     best = sorted(matches, key=lambda x: x[1], reverse=True)[0][0]
 
     await update.message.reply_text(
-        "✨ Great news! We found your study match! ✨\n\n"
-        f"👤 Name: {best['first_name']} {best['family_name']}\n"
-        f"🎂 Age: {best['age']}\n"
-        f"📚 Major: {best['major']}\n"
-        f"📧 Email: {best['email']}\n"
-        f"💬 KakaoTalk: {best['kakaotalk']}\n\n"
-        f"Feel free to reach out and start studying together! Good luck! 🚀",
+        "Great news! We found your study match!\n\n"
+        f"Name: {best['first_name']} {best['family_name']}\n"
+        f"Age: {best['age']}\n"
+        f"Major: {best['major']}\n"
+        f"Email: {best['email']}\n"
+        f"KakaoTalk: {best['kakaotalk']}\n\n"
+        f"Feel free to reach out and start studying together! Good luck!",
         reply_markup=menu_keyboard
     )
 
@@ -288,7 +288,7 @@ async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if uid not in users:
         await update.message.reply_text(
-            "You don't have any registered info to delete! 🤷\n\n"
+            "You don't have any registered info to delete!\n\n"
             "Send /start if you want to register!",
             reply_markup=ReplyKeyboardRemove()
         )
@@ -298,14 +298,14 @@ async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if delete_user(uid):
         await update.message.reply_text(
-            f"Got it, {user_name}! Your information has been deleted. 🗑️\n\n"
+            f"Got it, {user_name}! Your information has been deleted.️\n\n"
             f"If you change your mind, just send /start to register again!\n\n"
-            f"Take care! 👋",
+            f"Take care!",
             reply_markup=ReplyKeyboardRemove()
         )
     else:
         await update.message.reply_text(
-            "Oops! Something went wrong. Please try again! 😅",
+            "Oops! Something went wrong. Please try again!",
             reply_markup=ReplyKeyboardRemove()
         )
 
@@ -322,15 +322,12 @@ async def lifespan(app: FastAPI):
     await telegram_app.initialize()
     await telegram_app.start()
     asyncio.create_task(telegram_app.updater.start_polling())
-    print("✅ Study Partner Bot is running!")
 
     yield
 
     await telegram_app.updater.stop()
     await telegram_app.stop()
     await telegram_app.shutdown()
-    print("❌ Bot stopped")
-
 
 app = FastAPI(lifespan=lifespan)
 
