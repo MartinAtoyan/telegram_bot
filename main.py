@@ -1,11 +1,11 @@
 import os
 import json
-from dotenv import load_dotenv
+import asyncio
 from fastapi import FastAPI
+from dotenv import load_dotenv
+from contextlib import asynccontextmanager
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
-import asyncio
-from contextlib import asynccontextmanager
 
 load_dotenv()
 
