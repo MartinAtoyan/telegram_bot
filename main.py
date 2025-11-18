@@ -1,11 +1,10 @@
 import os
 import json
-import asyncio
-from fastapi import FastAPI
 from dotenv import load_dotenv
-from contextlib import asynccontextmanager
+from telegram.ext import ContextTypes
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+
+from utils import user_to_vector, build_annoy_index
 
 load_dotenv()
 
@@ -122,6 +121,7 @@ QUESTION_METHOD_PREF = [
 ]
 
 user_sessions = {}
+annoy_index, id_map, reverse_map = build_annoy_index(load_users())
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -229,72 +229,43 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
 
     if uid not in users:
-        await update.message.reply_text(
-            "Oops! Looks like you haven't registered yet! 😅\n\n"
-            "Send /start to create your profile first!",
-            reply_markup=ReplyKeyboardRemove()
-        )
+        await update.message.reply_text("You need to register first using /start")
         return
 
     you = users[uid]
 
-    index_major = {}
-    index_year = {}
-    index_meet = {}
-    index_sound = {}
+    your_vec = user_to_vector(you)
 
-    for user_id, u in users.items():
-        if user_id == uid:
+    your_annoy_id = reverse_map[uid]
+
+    nearest = annoy_index.get_nns_by_vector(your_vec, 10, include_distances=True)
+
+    nn_ids, distances = nearest
+
+    best_user_id = None
+    best_distance = float('inf')
+
+    for annoy_i, dist in zip(nn_ids, distances):
+        if id_map[annoy_i] == uid:
             continue
+        if dist < best_distance:
+            best_distance = dist
+            best_user_id = id_map[annoy_i]
 
-        index_major.setdefault(u["major"], set()).add(user_id)
-        index_year.setdefault(u["year_level"], set()).add(user_id)
-        index_meet.setdefault(u["meet_pref"], set()).add(user_id)
-        index_sound.setdefault(u["sound_pref"], set()).add(user_id)
-
-    candidates = []
-
-    major_matches = index_major.get(you["major"], set())
-    year_matches = index_year.get(you["year_level"], set())
-    meet_matches = index_meet.get(you["meet_pref"], set())
-    sound_matches = index_sound.get(you["sound_pref"], set())
-
-    all_user_ids = set(users.keys()) - {uid}
-
-    for other_id in all_user_ids:
-        score = (
-            (other_id in major_matches) +
-            (other_id in year_matches) +
-            (other_id in meet_matches) +
-            (other_id in sound_matches)
-        )
-        if score >= 2:
-            candidates.append((other_id, score))
-
-    menu_keyboard = ReplyKeyboardMarkup([["/match"], ["/delete"]], resize_keyboard=True)
-
-    if not candidates:
-        await update.message.reply_text(
-            "No matches found yet!\n\n"
-            "Don't worry though - as more students register, "
-            "you'll have better chances of finding your perfect study buddy!",
-            reply_markup=menu_keyboard
-        )
+    if not best_user_id:
+        await update.message.reply_text("No matches yet!")
         return
 
-    candidates.sort(key=lambda x: x[1], reverse=True)
-    best_id = candidates[0][0]
-    best = users[best_id]
+    match_user = users[best_user_id]
 
     await update.message.reply_text(
-        "Great news! We found your study match!\n\n"
-        f"Name: {best['first_name']} {best['family_name']}\n"
-        f"Age: {best['age']}\n"
-        f"Major: {best['major']}\n"
-        f"Email: {best['email']}\n"
-        f"KakaoTalk: {best['kakaotalk']}\n\n"
-        f"Feel free to reach out and start studying together!",
-        reply_markup=menu_keyboard
+        f"Best match found!\n\n"
+        f"Name: {match_user['first_name']} {match_user['family_name']}\n"
+        f"Age: {match_user['age']}\n"
+        f"Major: {match_user['major']}\n"
+        f"Email: {match_user['email']}\n"
+        f"KakaoTalk: {match_user['kakaotalk']}\n\n"
+        f"Distance score: {best_distance:.2f}"
     )
 
 
@@ -325,44 +296,44 @@ async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=ReplyKeyboardRemove()
         )
 
-
-telegram_app = Application.builder().token(BOT_TOKEN).build()
-telegram_app.add_handler(CommandHandler("start", start))
-telegram_app.add_handler(CommandHandler("match", match))
-telegram_app.add_handler(CommandHandler("delete", delete))
-telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await telegram_app.initialize()
-    await telegram_app.start()
-    asyncio.create_task(telegram_app.updater.start_polling())
-
-    yield
-
-    await telegram_app.updater.stop()
-    await telegram_app.stop()
-    await telegram_app.shutdown()
-
-app = FastAPI(lifespan=lifespan)
-
-
-@app.get("/")
-async def root():
-    return {"status": "Study Partner Matching Bot - Active", "message": "Ready to connect students!"}
-
-
-@app.get("/health")
-async def health():
-    return {
-        "status": "healthy",
-        "bot_running": telegram_app.running,
-        "total_users": len(load_users())
-    }
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+#
+# telegram_app = Application.builder().token(BOT_TOKEN).build()
+# telegram_app.add_handler(CommandHandler("start", start))
+# telegram_app.add_handler(CommandHandler("match", match))
+# telegram_app.add_handler(CommandHandler("delete", delete))
+# telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+#
+#
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     await telegram_app.initialize()
+#     await telegram_app.start()
+#     asyncio.create_task(telegram_app.updater.start_polling())
+#
+#     yield
+#
+#     await telegram_app.updater.stop()
+#     await telegram_app.stop()
+#     await telegram_app.shutdown()
+#
+# app = FastAPI(lifespan=lifespan)
+#
+#
+# @app.get("/")
+# async def root():
+#     return {"status": "Study Partner Matching Bot - Active", "message": "Ready to connect students!"}
+#
+#
+# @app.get("/health")
+# async def health():
+#     return {
+#         "status": "healthy",
+#         "bot_running": telegram_app.running,
+#         "total_users": len(load_users())
+#     }
+#
+#
+# if __name__ == "__main__":
+#     import uvicorn
+#
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
