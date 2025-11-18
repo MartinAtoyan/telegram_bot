@@ -237,38 +237,54 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     you = users[uid]
-    matches = []
 
-    for other_id, u in users.items():
-        if other_id == uid:
+    index_major = {}
+    index_year = {}
+    index_meet = {}
+    index_sound = {}
+
+    for user_id, u in users.items():
+        if user_id == uid:
             continue
 
-        score = 0
-        if u["major"] == you["major"]:
-            score += 1
-        if u["year_level"] == you["year_level"]:
-            score += 1
-        if u["meet_pref"] == you["meet_pref"]:
-            score += 1
-        if u["sound_pref"] == you["sound_pref"]:
-            score += 1
+        index_major.setdefault(u["major"], set()).add(user_id)
+        index_year.setdefault(u["year_level"], set()).add(user_id)
+        index_meet.setdefault(u["meet_pref"], set()).add(user_id)
+        index_sound.setdefault(u["sound_pref"], set()).add(user_id)
 
+    candidates = []
+
+    major_matches = index_major.get(you["major"], set())
+    year_matches = index_year.get(you["year_level"], set())
+    meet_matches = index_meet.get(you["meet_pref"], set())
+    sound_matches = index_sound.get(you["sound_pref"], set())
+
+    all_user_ids = set(users.keys()) - {uid}
+
+    for other_id in all_user_ids:
+        score = (
+            (other_id in major_matches) +
+            (other_id in year_matches) +
+            (other_id in meet_matches) +
+            (other_id in sound_matches)
+        )
         if score >= 2:
-            matches.append((u, score))
+            candidates.append((other_id, score))
 
     menu_keyboard = ReplyKeyboardMarkup([["/match"], ["/delete"]], resize_keyboard=True)
 
-    if not matches:
+    if not candidates:
         await update.message.reply_text(
             "No matches found yet!\n\n"
             "Don't worry though - as more students register, "
-            "you'll have better chances of finding your perfect study buddy!\n\n"
-            "Check back soon!",
+            "you'll have better chances of finding your perfect study buddy!",
             reply_markup=menu_keyboard
         )
         return
 
-    best = sorted(matches, key=lambda x: x[1], reverse=True)[0][0]
+    candidates.sort(key=lambda x: x[1], reverse=True)
+    best_id = candidates[0][0]
+    best = users[best_id]
 
     await update.message.reply_text(
         "Great news! We found your study match!\n\n"
@@ -277,7 +293,7 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Major: {best['major']}\n"
         f"Email: {best['email']}\n"
         f"KakaoTalk: {best['kakaotalk']}\n\n"
-        f"Feel free to reach out and start studying together! Good luck!",
+        f"Feel free to reach out and start studying together!",
         reply_markup=menu_keyboard
     )
 
