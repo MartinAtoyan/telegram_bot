@@ -221,48 +221,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(QUESTIONS[session["step"]])
 
 
-# async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     users = load_users()
-#     uid = str(update.effective_user.id)
-#
-#     if uid not in users:
-#         await update.message.reply_text("You need to register first using /start")
-#         return
-#
-#     you = users[uid]
-#
-#     your_vec = user_to_vector(you)
-#
-#     nearest = annoy_index.get_nns_by_vector(your_vec, 10, include_distances=True)
-#
-#     nn_ids, distances = nearest
-#
-#     best_user_id = None
-#     best_distance = float('inf')
-#
-#     for annoy_i, dist in zip(nn_ids, distances):
-#         if id_map[annoy_i] == uid:
-#             continue
-#         if dist < best_distance:
-#             best_distance = dist
-#             best_user_id = id_map[annoy_i]
-#
-#     if not best_user_id:
-#         await update.message.reply_text("No matches yet!")
-#         return
-#
-#     match_user = users[best_user_id]
-#
-#     await update.message.reply_text(
-#         f"Best match found!\n\n"
-#         f"Name: {match_user['first_name']} {match_user['family_name']}\n"
-#         f"Age: {match_user['age']}\n"
-#         f"Major: {match_user['major']}\n"
-#         f"Email: {match_user['email']}\n"
-#         f"KakaoTalk: {match_user['kakaotalk']}\n\n"
-#         f"Distance score: {best_distance:.2f}"
-#     )
-
 async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users = load_users()
     uid = str(update.effective_user.id)
