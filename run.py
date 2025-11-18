@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from main import BOT_TOKEN, start, match, delete, load_users, handle_message
 

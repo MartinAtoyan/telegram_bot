@@ -11,38 +11,35 @@ load_dotenv()
 DATA_FILE = os.environ.get("DATA_FILE")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-
 def load_users():
     users = {}
     try:
         with open(DATA_FILE, "r") as f:
-            for line in f:
-                data = json.loads(line.strip())
+            data_list = json.load(f)
+            for data in data_list:
                 users[str(data["telegram_id"])] = data
     except FileNotFoundError:
         pass
     return users
 
-
 def save_user(user_data):
     users = load_users()
     users[str(user_data["telegram_id"])] = user_data
-    with open(DATA_FILE, "w") as f:
-        for uid, data in users.items():
-            f.write(json.dumps(data) + "\n")
 
+    with open(DATA_FILE, "w") as f:
+        json.dump(list(users.values()), f, indent=2)
 
 def delete_user(telegram_id):
     users = load_users()
     uid = str(telegram_id)
+
     if uid in users:
         del users[uid]
         with open(DATA_FILE, "w") as f:
-            for user_id, data in users.items():
-                f.write(json.dumps(data) + "\n")
+            json.dump(list(users.values()), f, indent=2)
         return True
-    return False
 
+    return False
 
 QUESTIONS = [
     "What's your first name?",
@@ -224,6 +221,48 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(QUESTIONS[session["step"]])
 
 
+# async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     users = load_users()
+#     uid = str(update.effective_user.id)
+#
+#     if uid not in users:
+#         await update.message.reply_text("You need to register first using /start")
+#         return
+#
+#     you = users[uid]
+#
+#     your_vec = user_to_vector(you)
+#
+#     nearest = annoy_index.get_nns_by_vector(your_vec, 10, include_distances=True)
+#
+#     nn_ids, distances = nearest
+#
+#     best_user_id = None
+#     best_distance = float('inf')
+#
+#     for annoy_i, dist in zip(nn_ids, distances):
+#         if id_map[annoy_i] == uid:
+#             continue
+#         if dist < best_distance:
+#             best_distance = dist
+#             best_user_id = id_map[annoy_i]
+#
+#     if not best_user_id:
+#         await update.message.reply_text("No matches yet!")
+#         return
+#
+#     match_user = users[best_user_id]
+#
+#     await update.message.reply_text(
+#         f"Best match found!\n\n"
+#         f"Name: {match_user['first_name']} {match_user['family_name']}\n"
+#         f"Age: {match_user['age']}\n"
+#         f"Major: {match_user['major']}\n"
+#         f"Email: {match_user['email']}\n"
+#         f"KakaoTalk: {match_user['kakaotalk']}\n\n"
+#         f"Distance score: {best_distance:.2f}"
+#     )
+
 async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users = load_users()
     uid = str(update.effective_user.id)
@@ -234,32 +273,41 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     you = users[uid]
 
+    if "seen_matches" not in you:
+        you["seen_matches"] = []
+
     your_vec = user_to_vector(you)
+    # your_annoy_id = reverse_map[uid]
 
-    your_annoy_id = reverse_map[uid]
-
-    nearest = annoy_index.get_nns_by_vector(your_vec, 10, include_distances=True)
-
-    nn_ids, distances = nearest
+    nn_ids, distances = annoy_index.get_nns_by_vector(your_vec, 50, include_distances=True)
 
     best_user_id = None
     best_distance = float('inf')
 
     for annoy_i, dist in zip(nn_ids, distances):
-        if id_map[annoy_i] == uid:
+        cand_id = id_map[annoy_i]
+
+        if cand_id == uid:
             continue
-        if dist < best_distance:
-            best_distance = dist
-            best_user_id = id_map[annoy_i]
+
+        if cand_id in you["seen_matches"]:
+            continue
+
+        best_user_id = cand_id
+        best_distance = dist
+        break
 
     if not best_user_id:
-        await update.message.reply_text("No matches yet!")
+        await update.message.reply_text("You've seen all available matches!")
         return
 
     match_user = users[best_user_id]
 
+    you["seen_matches"].append(best_user_id)
+    save_user(you)
+
     await update.message.reply_text(
-        f"Best match found!\n\n"
+        f"New match found!\n\n"
         f"Name: {match_user['first_name']} {match_user['family_name']}\n"
         f"Age: {match_user['age']}\n"
         f"Major: {match_user['major']}\n"
@@ -267,7 +315,6 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"KakaoTalk: {match_user['kakaotalk']}\n\n"
         f"Distance score: {best_distance:.2f}"
     )
-
 
 async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
