@@ -4,10 +4,25 @@ from annoy import AnnoyIndex
 VECTOR_SIZE = 5
 ANNOY_TREES = 10
 
-def encode_major(major): return hash(major) % 1000
-def encode_year(year): return int(year)
-def encode_pref(p): return hash(p) % 100
-def normalize_age(age): return float(age) / 100.0
+YEAR_MAP = {
+    "Freshman": 0,
+    "Sophomore": 1,
+    "Junior": 2,
+    "Senior": 3,
+    "No preference": 4
+}
+
+def encode_major(major):
+    return hash(major) % 1000
+
+def encode_year(year):
+    return YEAR_MAP.get(year, 4)
+
+def encode_pref(p):
+    return hash(p) % 100
+
+def normalize_age(age):
+    return float(age) / 100.0
 
 def user_to_vector(u):
     return np.array([
@@ -20,7 +35,6 @@ def user_to_vector(u):
 
 def build_annoy_index(users):
     index = AnnoyIndex(VECTOR_SIZE, 'euclidean')
-
     id_map = {}
     reverse_map = {}
 
