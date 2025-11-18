@@ -277,6 +277,7 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         you["seen_matches"] = []
 
     your_vec = user_to_vector(you)
+    a = 1
     # your_annoy_id = reverse_map[uid]
 
     nn_ids, distances = annoy_index.get_nns_by_vector(your_vec, 50, include_distances=True)
