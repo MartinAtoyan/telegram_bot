@@ -11,6 +11,7 @@ load_dotenv()
 DATA_FILE = os.environ.get("DATA_FILE")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
+
 def load_users():
     users = {}
     try:
@@ -22,12 +23,14 @@ def load_users():
         pass
     return users
 
+
 def save_user(user_data):
     users = load_users()
     users[str(user_data["telegram_id"])] = user_data
 
     with open(DATA_FILE, "w") as f:
         json.dump(list(users.values()), f, indent=2)
+
 
 def delete_user(telegram_id):
     users = load_users()
@@ -41,19 +44,20 @@ def delete_user(telegram_id):
 
     return False
 
+
 QUESTIONS = [
-    "What's your first name?",
-    "Great! And your last name?",
-    "How old are you?",
-    "What's your email address?",
-    "What's your KakaoTalk ID?",
+    "Enter your First Name",
+    "Enter your Family Name",
+    "Enter your age",
+    "Enter your email",
+    "Enter your KakaoTalk ID",
     "What year are you in?",
-    "Which major are you studying?",
-    "Who would you prefer as a study partner?",
-    "Do you have a preference for your study partner's year level?",
-    "Where would you like to study?",
-    "What kind of study environment do you prefer?",
-    "How do you like to study?",
+    "Select Major?",
+    "Select study partner/group preference",
+    "Select study partner/group preference",
+    "Select study preference",
+    "Select study preference (audible)",
+    "Select study preference (asking questions)",
     "How would you like to ask questions?"
 ]
 
@@ -103,13 +107,13 @@ STUDY_LOCATION_PREF = [
 ]
 
 STUDY_SOUND_PREF = [
-    ["I prefer a silent environment"],
+    ["I prefer a silent environment where everyone is muted"],
     ["I prefer studying with music"]
 ]
 
 STUDY_QUESTION_PREF = [
-    ["I like asking questions about the material"],
-    ["I prefer studying independently"]
+    ["I prefer being able to ask questions reagrding the study material "],
+    ["I prefer individual studying with no help"]
 ]
 
 QUESTION_METHOD_PREF = [
@@ -137,7 +141,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_sessions[uid] = {"answers": [], "step": 0}
     await update.message.reply_text(
-        "Hi there! Let's find you the perfect study partner!\n\n"
+        "Let's find you the perfect study partner!\n\n"
         "I'll ask you a few quick questions to get started.\n\n" + QUESTIONS[0],
         reply_markup=ReplyKeyboardRemove()
     )
@@ -209,9 +213,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_user(user_record)
         menu_keyboard = ReplyKeyboardMarkup([["/match"], ["/delete"]], resize_keyboard=True)
         await update.message.reply_text(
-            f"Awesome, {d[0]}! You're all set!\n\n"
-            f"Whenever you're ready to find your study partner, just send /match.\n\n"
-            f"Happy studying!",
+            f"Awesome, {d[0]}!\n\n"
+            f"Send /match to find study partner.\n\n",
             reply_markup=menu_keyboard
         )
         del user_sessions[uid]
@@ -235,7 +238,6 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         you["seen_matches"] = []
 
     your_vec = user_to_vector(you)
-    # your_annoy_id = reverse_map[uid]
 
     nn_ids, distances = annoy_index.get_nns_by_vector(your_vec, 50, include_distances=True)
 
@@ -274,6 +276,7 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Distance score: {best_distance:.2f}"
     )
 
+
 async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     users = load_users()
@@ -291,12 +294,11 @@ async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if delete_user(uid):
         await update.message.reply_text(
             f"Got it, {user_name}! Your information has been deleted.️\n\n"
-            f"If you change your mind, just send /start to register again!\n\n"
-            f"Take care!",
+            f"Send /start to register again!\n\n",
             reply_markup=ReplyKeyboardRemove()
         )
     else:
         await update.message.reply_text(
-            "Oops! Something went wrong. Please try again!",
+            "Something went wrong. Please try again!",
             reply_markup=ReplyKeyboardRemove()
         )
