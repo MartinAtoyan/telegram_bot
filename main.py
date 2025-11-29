@@ -230,6 +230,15 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     display_distance = base_distance
 
     if not mutual:
+        same_major = (you.get("major") == match_user.get("major"))
+        same_year = (you.get("year_level") == match_user.get("year_level"))
+
+        if (same_major is False) and (same_year is False):
+            display_distance = display_distance + 1.0
+        else:
+            display_distance = display_distance + 0.5
+
+    if not mutual:
         display_distance = display_distance + 0.5
 
     await update.message.reply_text(
