@@ -1,11 +1,9 @@
 from annoy import AnnoyIndex
 from config import MAJORS, PARTNER_YEAR_ORDER
 
-
 MAJOR_NAMES = [row[0] for row in MAJORS]
 MAJOR_INDEX = {name: i for i, name in enumerate(MAJOR_NAMES)}
 NUM_MAJORS = len(MAJOR_NAMES)
-
 
 MIN_AGE = 18
 MAX_AGE = 30
@@ -30,8 +28,8 @@ def encode_year_scaled(year: str):
     return float(i) / (len(YEAR_ORDER) - 1)
 
 
-
 PARTNER_YEAR_INDEX = {y: i for i, y in enumerate(PARTNER_YEAR_ORDER)}
+
 
 def encode_partner_year_pref(p: str):
     if p not in PARTNER_YEAR_INDEX:
@@ -43,19 +41,15 @@ def encode_partner_year_pref(p: str):
 PARTNER_MAJOR_PREF_MAP = {
     "I prefer a study partner from my major": 1.0,
     "I prefer a study partner from my division": 0.5,
-    "I don't have a specific preference": 0.0,
-}
-
+    "I don't have a specific preference": 0.0}
 
 def encode_partner_major_pref(p: str):
     return PARTNER_MAJOR_PREF_MAP.get(p, 0.0)
-
 
 MEET_PREF_MAP = {
     "I prefer studying online": 0.0,
     "I prefer meeting in real life": 1.0,
 }
-
 
 def encode_meet_pref(p: str):
     return MEET_PREF_MAP.get(p, 0.5)

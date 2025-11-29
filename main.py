@@ -1,6 +1,4 @@
-import os
 import json
-from dotenv import load_dotenv
 from telegram.ext import ContextTypes
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
@@ -18,11 +16,8 @@ from config import (
     PARTNER_YEAR_TO_YEAR
 )
 
-load_dotenv()
-
-DATA_FILE = os.environ.get("DATA_FILE")
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-
+#DATA_FILE = abs_path_to_users.json
+# BOT TOKEN = token_telegram_bot
 
 def load_users():
     users = {}
@@ -99,7 +94,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     session = user_sessions[uid]
-    step = session["step"]
     response = update.message.text
 
     session["answers"].append(response)
@@ -143,8 +137,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "meet_pref": d[9],
             "sound_pref": d[10],
             "question_pref": d[11],
-            "question_method": d[12] if len(d) > 12 else "N/A",
-        }
+            "question_method": d[12] if len(d) > 12 else "N/A"}
 
         save_user(user_record)
         menu_keyboard = ReplyKeyboardMarkup([["/match"], ["/delete"]], resize_keyboard=True)
@@ -158,7 +151,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if session["step"] < 5:
         await update.message.reply_text(QUESTIONS[session["step"]])
-
 
 async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users = load_users()
@@ -176,7 +168,9 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     your_vec = user_to_vector(you)
 
     nn_ids, distances = annoy_index.get_nns_by_vector(
-        your_vec, 50, include_distances=True
+        your_vec,
+        50,
+        include_distances=True
     )
 
     best_mutual_id = None
@@ -185,7 +179,12 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     best_one_sided_id = None
     best_one_sided_dist = float("inf")
 
-    for annoy_i, dist in zip(nn_ids, distances):
+    index = 0
+    while index < len(nn_ids):
+        annoy_i = nn_ids[index]
+        dist = distances[index]
+        index = index + 1
+
         cand_id = id_map[annoy_i]
 
         if cand_id == uid:
@@ -199,10 +198,10 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         you_like_them = is_candidate_compatible(you, cand)
         they_like_you = is_candidate_compatible(cand, you)
 
-        if not you_like_them and not they_like_you:
+        if (you_like_them is False) and (they_like_you is False):
             continue
 
-        if you_like_them and they_like_you:
+        if (you_like_them is True) and (they_like_you is True):
             if dist < best_mutual_dist:
                 best_mutual_id = cand_id
                 best_mutual_dist = dist
@@ -215,12 +214,10 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         best_user_id = best_mutual_id
         base_distance = best_mutual_dist
         mutual = True
-
     elif best_one_sided_id is not None:
         best_user_id = best_one_sided_id
         base_distance = best_one_sided_dist
         mutual = False
-
     else:
         await update.message.reply_text("No compatible matches found yet!")
         return
@@ -233,20 +230,19 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     display_distance = base_distance
 
     if not mutual:
-        display_distance += 0.5
+        display_distance = display_distance + 0.5
 
     await update.message.reply_text(
-        f"New match found!\n\n"
-        f"Name: {match_user['first_name']} {match_user['family_name']}\n"
-        f"Age: {match_user['age']}\n"
-        f"Major: {match_user['major']}\n"
-        f"Email: {match_user['email']}\n"
-        f"KakaoTalk: {match_user['kakaotalk']}\n\n"
-        f"Distance score: {display_distance:.2f}"
+        "New match found!\n\n"
+        "Name: " + match_user["first_name"] + " " + match_user["family_name"] + "\n"
+        "Age: " + str(match_user["age"]) + "\n"
+        "Major: " + match_user["major"] + "\n"
+        "Email: " + match_user["email"] + "\n"
+        "KakaoTalk: " + match_user["kakaotalk"] + "\n\n"
+        "Distance score: " + f"{display_distance:.2f}"
     )
 
-
-def is_candidate_compatible(you: dict, cand: dict) -> bool:
+def is_candidate_compatible(you: dict, cand: dict):
 
     py = you.get("partner_pref_year", "No preference")
     target_year = PARTNER_YEAR_TO_YEAR.get(py, None)

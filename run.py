@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
-from main import BOT_TOKEN, start, match, delete, load_users, handle_message
+from main import BOT_TOKEN, start, match, delete, handle_message
 
 telegram_app = Application.builder().token(BOT_TOKEN).build()
 telegram_app.add_handler(CommandHandler("start", start))
@@ -26,20 +26,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-
 @app.get("/")
 async def root():
     return {"status": "Study Partner Matching Bot - Active", "message": "Ready to connect students!"}
-
-
-@app.get("/health")
-async def health():
-    return {
-        "status": "healthy",
-        "bot_running": telegram_app.running,
-        "total_users": len(load_users())
-    }
-
 
 if __name__ == "__main__":
     import uvicorn
