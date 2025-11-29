@@ -5,6 +5,18 @@ from telegram.ext import ContextTypes
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from utils import user_to_vector, build_annoy_index
+from config import (
+    QUESTIONS,
+    YEAR_LEVELS,
+    MAJORS,
+    PARTNER_MAJOR_PREF,
+    PARTNER_YEAR_PREF,
+    STUDY_LOCATION_PREF,
+    STUDY_SOUND_PREF,
+    STUDY_QUESTION_PREF,
+    QUESTION_METHOD_PREF,
+    PARTNER_YEAR_TO_YEAR
+)
 
 load_dotenv()
 
@@ -44,82 +56,6 @@ def delete_user(telegram_id):
 
     return False
 
-
-QUESTIONS = [
-    "Enter your First Name",
-    "Enter your Family Name",
-    "Enter your age",
-    "Enter your email",
-    "Enter your KakaoTalk ID",
-    "What year are you in?",
-    "Select Major?",
-    "Select study partner/group preference",
-    "Select study partner/group preference",
-    "Select study preference",
-    "Select study preference (audible)",
-    "Select study preference (asking questions)",
-    "How would you like to ask questions?"
-]
-
-YEAR_LEVELS = [
-    ["Freshman"],
-    ["Sophomore"],
-    ["Junior"],
-    ["Senior"]
-]
-
-MAJORS = [
-    ["Comparative Literature and Culture (CLC)"],
-    ["Economics (ECON)"],
-    ["International Studies (IS)"],
-    ["Political Science and International Relations (PSIR)"],
-    ["Life Science and Biotechnology (LSBT)"],
-    ["Asian Studies (AS)"],
-    ["Culture and Design Management (CDM)"],
-    ["Information and Interaction Design (IID)"],
-    ["Creative Technology Management (CTM)"],
-    ["Justice and Civil Leadership (JCL)"],
-    ["Quantitative Risk Management (QRM)"],
-    ["Science, Technology, and Policy (STP)"],
-    ["Sustainable Development and Cooperation (SDC)"],
-    ["Nano Science and Engineering (NSE)"],
-    ["Energy and Environmental Science and Engineering (EESE)"],
-    ["Bio-Convergence (BC)"]
-]
-
-PARTNER_MAJOR_PREF = [
-    ["I prefer a study partner from my major"],
-    ["I prefer a study partner from my division"],
-    ["I don't have a specific preference"]
-]
-
-PARTNER_YEAR_PREF = [
-    ["I prefer a freshman"],
-    ["I prefer a sophomore"],
-    ["I prefer a junior"],
-    ["I prefer a senior"],
-    ["No preference"]
-]
-
-STUDY_LOCATION_PREF = [
-    ["I prefer studying online"],
-    ["I prefer meeting in real life"]
-]
-
-STUDY_SOUND_PREF = [
-    ["I prefer a silent environment where everyone is muted"],
-    ["I prefer studying with music"]
-]
-
-STUDY_QUESTION_PREF = [
-    ["I prefer being able to ask questions reagrding the study material "],
-    ["I prefer individual studying with no help"]
-]
-
-QUESTION_METHOD_PREF = [
-    ["I prefer asking questions in the chat"],
-    ["I prefer asking questions face to face"]
-]
 
 user_sessions = {}
 annoy_index, id_map, reverse_map = build_annoy_index(load_users())
@@ -239,10 +175,15 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     your_vec = user_to_vector(you)
 
-    nn_ids, distances = annoy_index.get_nns_by_vector(your_vec, 50, include_distances=True)
+    nn_ids, distances = annoy_index.get_nns_by_vector(
+        your_vec, 50, include_distances=True
+    )
 
-    best_user_id = None
-    best_distance = float('inf')
+    best_mutual_id = None
+    best_mutual_dist = float("inf")
+
+    best_one_sided_id = None
+    best_one_sided_dist = float("inf")
 
     for annoy_i, dist in zip(nn_ids, distances):
         cand_id = id_map[annoy_i]
@@ -253,18 +194,46 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if cand_id in you["seen_matches"]:
             continue
 
-        best_user_id = cand_id
-        best_distance = dist
-        break
+        cand = users[cand_id]
 
-    if not best_user_id:
-        await update.message.reply_text("You've seen all available matches!")
+        you_like_them = is_candidate_compatible(you, cand)
+        they_like_you = is_candidate_compatible(cand, you)
+
+        if not you_like_them and not they_like_you:
+            continue
+
+        if you_like_them and they_like_you:
+            if dist < best_mutual_dist:
+                best_mutual_id = cand_id
+                best_mutual_dist = dist
+        else:
+            if dist < best_one_sided_dist:
+                best_one_sided_id = cand_id
+                best_one_sided_dist = dist
+
+    if best_mutual_id is not None:
+        best_user_id = best_mutual_id
+        base_distance = best_mutual_dist
+        mutual = True
+
+    elif best_one_sided_id is not None:
+        best_user_id = best_one_sided_id
+        base_distance = best_one_sided_dist
+        mutual = False
+
+    else:
+        await update.message.reply_text("No compatible matches found yet!")
         return
 
     match_user = users[best_user_id]
 
     you["seen_matches"].append(best_user_id)
     save_user(you)
+
+    display_distance = base_distance
+
+    if not mutual:
+        display_distance += 0.5
 
     await update.message.reply_text(
         f"New match found!\n\n"
@@ -273,8 +242,24 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Major: {match_user['major']}\n"
         f"Email: {match_user['email']}\n"
         f"KakaoTalk: {match_user['kakaotalk']}\n\n"
-        f"Distance score: {best_distance:.2f}"
+        f"Distance score: {display_distance:.2f}"
     )
+
+
+def is_candidate_compatible(you: dict, cand: dict) -> bool:
+
+    py = you.get("partner_pref_year", "No preference")
+    target_year = PARTNER_YEAR_TO_YEAR.get(py, None)
+    if target_year is not None:
+        if cand.get("year_level") != target_year:
+            return False
+
+    pm = you.get("partner_pref_major", "I don't have a specific preference")
+    if pm == "I prefer a study partner from my major":
+        if cand.get("major") != you.get("major"):
+            return False
+
+    return True
 
 
 async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
