@@ -10,8 +10,8 @@ QUESTIONS = [
     "Select study partner/group preference",
     "Select study preference",
     "Select study preference (audible)",
-    "Select study preference (asking questions)",
-    "How would you like to ask questions?"]
+    "Select study preference (asking questions)"
+]
 
 YEAR_LEVELS = [
     ["Freshman"],
@@ -60,9 +60,6 @@ STUDY_QUESTION_PREF = [
     ["I prefer being able to ask questions reagrding the study material "],
     ["I prefer individual studying with no help"]]
 
-QUESTION_METHOD_PREF = [
-    ["I prefer asking questions in the chat"],
-    ["I prefer asking questions face to face"]]
 
 PARTNER_YEAR_TO_YEAR = {
     "I prefer a freshman": "Freshman",

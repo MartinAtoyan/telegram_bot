@@ -43,13 +43,16 @@ PARTNER_MAJOR_PREF_MAP = {
     "I prefer a study partner from my division": 0.5,
     "I don't have a specific preference": 0.0}
 
+
 def encode_partner_major_pref(p: str):
     return PARTNER_MAJOR_PREF_MAP.get(p, 0.0)
+
 
 MEET_PREF_MAP = {
     "I prefer studying online": 0.0,
     "I prefer meeting in real life": 1.0,
 }
+
 
 def encode_meet_pref(p: str):
     return MEET_PREF_MAP.get(p, 0.5)
@@ -75,17 +78,6 @@ def encode_question_pref(p: str):
     return QUESTION_PREF_MAP.get(p, 0.5)
 
 
-QUESTION_METHOD_MAP = {
-    "I prefer asking questions in the chat": 0.0,
-    "I prefer asking questions face to face": 1.0,
-    "N/A": 0.5,
-}
-
-
-def encode_question_method(p: str):
-    return QUESTION_METHOD_MAP.get(p, 0.5)
-
-
 def normalize_age(age_str: str):
     try:
         age = int(age_str)
@@ -105,7 +97,6 @@ def user_to_vector(u):
     meet_val = encode_meet_pref(u["meet_pref"])
     sound_val = encode_sound_pref(u["sound_pref"])
     question_pref_val = encode_question_pref(u["question_pref"])
-    question_method_val = encode_question_method(u.get("question_method", "N/A"))
     age_val = normalize_age(u["age"])
 
     scalar_vec = [
@@ -115,14 +106,13 @@ def user_to_vector(u):
         meet_val,
         sound_val,
         question_pref_val,
-        question_method_val,
         age_val,
     ]
 
     return major_vec + scalar_vec
 
 
-VECTOR_SIZE = NUM_MAJORS + 8
+VECTOR_SIZE = NUM_MAJORS + 7
 ANNOY_TREES = 10
 
 

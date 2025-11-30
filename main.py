@@ -1,3 +1,10 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+DATA_FILE = os.environ.get("DATA_FILE")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+
 import json
 from telegram.ext import ContextTypes
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
@@ -12,12 +19,12 @@ from config import (
     STUDY_LOCATION_PREF,
     STUDY_SOUND_PREF,
     STUDY_QUESTION_PREF,
-    QUESTION_METHOD_PREF,
     PARTNER_YEAR_TO_YEAR
 )
 
-#DATA_FILE = abs_path_to_users.json
-# BOT TOKEN = token_telegram_bot
+
+# DATA_FILE = abs_path_to_users.json
+# BOT_TOKEN = token_telegram_bot
 
 def load_users():
     users = {}
@@ -113,12 +120,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_options(update, STUDY_SOUND_PREF, QUESTIONS[10])
     elif session["step"] == 11:
         await send_options(update, STUDY_QUESTION_PREF, QUESTIONS[11])
-    elif session["step"] == 12:
-        if "asking questions" in session["answers"][11].lower():
-            await send_options(update, QUESTION_METHOD_PREF, QUESTIONS[12])
-        else:
-            session["answers"].append("N/A")
-            session["step"] += 1
 
     if session["step"] >= len(QUESTIONS):
         d = session["answers"]
@@ -151,6 +152,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if session["step"] < 5:
         await update.message.reply_text(QUESTIONS[session["step"]])
+
 
 async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users = load_users()
@@ -238,9 +240,6 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             display_distance = display_distance + 0.5
 
-    if not mutual:
-        display_distance = display_distance + 0.5
-
     await update.message.reply_text(
         "New match found!\n\n"
         "Name: " + match_user["first_name"] + " " + match_user["family_name"] + "\n"
@@ -251,8 +250,8 @@ async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Distance score: " + f"{display_distance:.2f}"
     )
 
-def is_candidate_compatible(you: dict, cand: dict):
 
+def is_candidate_compatible(you: dict, cand: dict):
     py = you.get("partner_pref_year", "No preference")
     target_year = PARTNER_YEAR_TO_YEAR.get(py, None)
     if target_year is not None:
